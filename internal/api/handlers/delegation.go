@@ -28,7 +28,7 @@ func (h *Handler) GetDelegationByTxHash(request *http.Request) (*Result, *types.
 }
 
 func (h *Handler) GetDelegationByFP(request *http.Request) (*Result, *types.Error) {
-	finalityProviderPkHex, err := parseTxHashQuery(request, "finality_provider_pk_hex")
+	fpPk, err := parsePublicKeyQuery(request, "fp_btc_pk", true)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +40,9 @@ func (h *Handler) GetDelegationByFP(request *http.Request) (*Result, *types.Erro
 	if err != nil {
 		return nil, err
 	}
+	// TODO: height filter
 	delegations, newPaginationKey, err := h.services.DelegationsByFP(
-		request.Context(), finalityProviderPkHex, stateFilter, paginationKey,
+		request.Context(), fpPk, stateFilter, paginationKey,
 	)
 	if err != nil {
 		return nil, err
