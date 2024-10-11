@@ -104,6 +104,10 @@ type DBClient interface {
 		ctx context.Context,
 		paginationToken string,
 	) (*DbResultMap[model.DelegationDocument], error)
+	FindDelegationsByFP(
+		ctx context.Context, finalityProviderPK string,
+		extraFilter *DelegationFilter, paginationToken string,
+	) (*DbResultMap[model.DelegationDocument], error)
 }
 
 type DelegationFilter struct {

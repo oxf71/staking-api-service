@@ -29,4 +29,7 @@ func (a *Server) SetupRoutes(r *chi.Mux) {
 	r.Get("/v1/staker/pubkey-lookup", registerHandler(handlers.GetPubKeys))
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
+	//TODO: test and verify
+	r.Get("/v1/finality-providers/delegations", registerHandler(handlers.GetDelegationByFP))
 }

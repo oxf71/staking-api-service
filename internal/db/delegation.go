@@ -194,3 +194,38 @@ func buildAdditionalDelegationFilter(
 	}
 	return baseFilter
 }
+
+func (db *Database) FindDelegationsByFP(
+	ctx context.Context, finalityProviderPK string,
+	extraFilter *DelegationFilter, paginationToken string,
+) (*DbResultMap[model.DelegationDocument], error) {
+	client := db.Client.Database(db.DbName).Collection(model.DelegationCollection)
+
+	filter := bson.M{"finality_provider_pk_hex": finalityProviderPK}
+	filter = buildAdditionalDelegationFilter(filter, extraFilter)
+	options := options.Find().SetSort(bson.D{
+		{Key: "staking_tx.start_height", Value: -1},
+		{Key: "_id", Value: 1},
+	})
+
+	// Decode the pagination token first if it exist
+	if paginationToken != "" {
+		decodedToken, err := model.DecodePaginationToken[model.DelegationByStakerPagination](paginationToken)
+		if err != nil {
+			return nil, &InvalidPaginationTokenError{
+				Message: "Invalid pagination token",
+			}
+		}
+		filter = bson.M{
+			"$or": []bson.M{
+				{"finality_provider_pk_hex": finalityProviderPK, "staking_tx.start_height": bson.M{"$lt": decodedToken.StakingStartHeight}},
+				{"finality_provider_pk_hex": finalityProviderPK, "staking_tx.start_height": decodedToken.StakingStartHeight, "_id": bson.M{"$gt": decodedToken.StakingTxHashHex}},
+			},
+		}
+	}
+
+	return findWithPagination(
+		ctx, client, filter, options, db.cfg.MaxPaginationLimit,
+		model.BuildDelegationByStakerPaginationToken,
+	)
+}

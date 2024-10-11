@@ -153,3 +153,30 @@ func (s *Services) CheckStakerHasActiveDelegationByPk(
 	}
 	return hasDelegation, nil
 }
+
+func (s *Services) DelegationsByFP(
+	ctx context.Context, finalityProviderPK string,
+	state types.DelegationState, pageToken string,
+) ([]DelegationPublic, string, *types.Error) {
+	filter := &db.DelegationFilter{}
+	if state != "" {
+		filter = &db.DelegationFilter{
+			States: []types.DelegationState{state},
+		}
+	}
+
+	resultMap, err := s.DbClient.FindDelegationsByFP(ctx, finalityProviderPK, filter, pageToken)
+	if err != nil {
+		if db.IsInvalidPaginationTokenError(err) {
+			log.Ctx(ctx).Warn().Err(err).Msg("Invalid pagination token when fetching delegations by staker pk")
+			return nil, "", types.NewError(http.StatusBadRequest, types.BadRequest, err)
+		}
+		log.Ctx(ctx).Error().Err(err).Msg("Failed to find delegations by staker pk")
+		return nil, "", types.NewInternalServiceError(err)
+	}
+	var delegations []DelegationPublic = make([]DelegationPublic, 0, len(resultMap.Data))
+	for _, d := range resultMap.Data {
+		delegations = append(delegations, FromDelegationDocument(&d))
+	}
+	return delegations, resultMap.PaginationToken, nil
+}

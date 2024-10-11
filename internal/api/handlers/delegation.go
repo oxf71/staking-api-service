@@ -26,3 +26,26 @@ func (h *Handler) GetDelegationByTxHash(request *http.Request) (*Result, *types.
 
 	return NewResult(services.FromDelegationDocument(delegation)), nil
 }
+
+func (h *Handler) GetDelegationByFP(request *http.Request) (*Result, *types.Error) {
+	finalityProviderPkHex, err := parseTxHashQuery(request, "finality_provider_pk_hex")
+	if err != nil {
+		return nil, err
+	}
+	paginationKey, err := parsePaginationQuery(request)
+	if err != nil {
+		return nil, err
+	}
+	stateFilter, err := parseStateFilterQuery(request, "state")
+	if err != nil {
+		return nil, err
+	}
+	delegations, newPaginationKey, err := h.services.DelegationsByFP(
+		request.Context(), finalityProviderPkHex, stateFilter, paginationKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewResultWithPagination(delegations, newPaginationKey), nil
+}
